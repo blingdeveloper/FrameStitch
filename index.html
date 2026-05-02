@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FrameStitch — Image to Video Editor</title>
+  <meta name="description" content="FrameStitch lets you stitch images into videos with beautiful transitions. Free, browser-based image to video editor.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <div class="logo">Frame<em>Stitch</em></div>
+    <div class="sep"></div>
+    <div class="ng">
+      <button class="pill" id="btn-undo" onclick="App.undo()" title="Undo (Ctrl+Z)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 6L5.5 3v2.5Q10 5.5 10 9.5 7.5 7 5.5 7v2z"/></svg>
+      </button>
+      <button class="pill" id="btn-redo" onclick="App.redo()" title="Redo (Ctrl+Shift+Z)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11.5 6L8.5 3v2.5Q4 5.5 4 9.5 6.5 7 8.5 7v2z"/></svg>
+      </button>
+    </div>
+    <div class="sep"></div>
+    <div class="ng">
+      <button class="pill" onclick="App.splitFrame()" title="Split frame at playhead">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="7" y1="2" x2="7" y2="12"/><path d="M3 4h3M3 7h3M3 10h3M8 4h3M8 7h3M8 10h3"/></svg>
+        Split
+      </button>
+      <button class="pill" onclick="App.deleteSelected()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2,3.5 12,3.5"/><path d="M4.5 3.5V2.5h5v1M4.5 3.5L5.5 11h3l1-7.5"/></svg>
+        Delete
+      </button>
+    </div>
+    <span class="proj-name" id="proj-name">Untitled project</span>
+    <div class="ng" style="margin-left:12px">
+      <button class="pill" onclick="App.openExport()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 2v7M4.5 6.5 7 9l2.5-2.5M2.5 10v1.5h9V10"/></svg>
+        Export
+      </button>
+      <button class="pill blue" onclick="App.triggerUpload()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 9V2M4.5 4.5 7 2l2.5 2.5M2.5 10.5v1h9v-1"/></svg>
+        Upload images
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN APP -->
+  <div id="app">
+
+    <!-- LEFT SIDEBAR -->
+    <aside id="sidebar">
+      <div class="sb-header">
+        <div class="sb-title">Library</div>
+        <div class="sb-tabs">
+          <div class="sb-tab active" data-tab="images" onclick="UI.switchTab('images', this)">Images</div>
+          <div class="sb-tab" data-tab="transitions" onclick="UI.switchTab('transitions', this)">Transitions</div>
+        </div>
+      </div>
+
+      <!-- IMAGES TAB -->
+      <div class="sb-body" id="tab-images">
+        <div id="drop-zone"
+          ondragover="Upload.dzOver(event)"
+          ondragleave="Upload.dzLeave()"
+          ondrop="Upload.dzDrop(event)"
+          onclick="App.triggerUpload()">
+          <input type="file" accept="image/*" multiple id="file-input" onchange="Upload.onFileInput(event)">
+          <div class="dz-icon">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M10 3v10M6.5 5.5 10 2l3.5 3.5"/>
+              <rect x="2" y="13" width="16" height="5" rx="2"/>
+            </svg>
+          </div>
+          <div class="dz-title">Drop images here</div>
+          <div class="dz-sub">or click to browse</div>
+          <div class="dz-formats">JPG · PNG · WebP · GIF</div>
+        </div>
+        <div class="sec-label" id="lib-label">Sample images</div>
+        <div class="img-grid" id="img-grid"></div>
+      </div>
+
+      <!-- TRANSITIONS TAB -->
+      <div class="sb-body" id="tab-transitions" style="display:none">
+        <div class="sec-label">Choose transition</div>
+        <div class="trans-list" id="trans-list"></div>
+        <p class="hint-text">Double-click to apply after selected frame, or drag onto the Effects track.</p>
+      </div>
+    </aside>
+
+    <!-- CENTER PREVIEW -->
+    <div id="center">
+      <div id="preview-area">
+        <div id="canvas-wrap">
+          <canvas id="preview-canvas" width="560" height="315"></canvas>
+          <div class="canvas-wm">FrameStitch</div>
+        </div>
+      </div>
+
+      <!-- TRANSPORT BAR -->
+      <div id="transport">
+        <button class="play-btn" id="play-btn" onclick="Player.toggle()" title="Play / Pause (Space)">
+          <svg id="play-icon" viewBox="0 0 14 14" fill="currentColor">
+            <polygon points="4,2 12,7 4,12"/>
+          </svg>
+        </button>
+        <div class="time-code" id="time-code">0:00.0 / 0:00.0</div>
+        <div class="scrub-bar" id="scrub-bar" onclick="Player.scrubClick(event)">
+          <div class="scrub-fill" id="scrub-fill" style="width:0%"></div>
+          <div class="scrub-thumb" id="scrub-thumb" style="left:0%"></div>
+        </div>
+        <div class="vol-group">
+          <svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 5v4h2.5L8 12V2L4.5 5H2z"/></svg>
+          <input type="range" id="vol-slider" min="0" max="100" value="80" title="Volume">
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT INSPECTOR -->
+    <aside id="inspector">
+      <div class="insp-header">
+        <div class="insp-title">Properties</div>
+      </div>
+      <div class="insp-body" id="insp-body">
+        <div class="no-sel">
+          <strong>Nothing selected</strong>
+          Click a frame or transition on the timeline to edit its properties.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- TIMELINE -->
+  <div id="timeline">
+    <div id="tl-header">
+      <span class="tl-label">Stitch timeline</span>
+      <button class="tl-btn" onclick="Timeline.zoomOut()" title="Zoom out">−</button>
+      <button class="tl-btn" onclick="Timeline.zoomIn()" title="Zoom in">+</button>
+      <button class="tl-btn" onclick="Timeline.fitView()" title="Fit all frames">Fit</button>
+      <span class="zoom-info" id="zoom-info">1.0×</span>
+    </div>
+    <div id="tl-body">
+      <div id="track-labels">
+        <div class="track-label">Frames</div>
+        <div class="track-label">Effects</div>
+      </div>
+      <div id="tl-scroll">
+        <div id="tl-inner">
+          <div id="ruler"></div>
+          <div id="frame-track"></div>
+          <div id="fx-track"></div>
+          <div id="playhead"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT MODAL -->
+  <div id="modal-overlay" class="modal-hidden">
+    <div class="modal-box">
+      <div class="modal-title">Export video</div>
+      <div class="modal-row"><span class="modal-key">Resolution</span><span class="modal-val">1280 × 720</span></div>
+      <div class="modal-row"><span class="modal-key">Format</span><span class="modal-val">MP4 · H.264</span></div>
+      <div class="modal-row"><span class="modal-key">Frame rate</span><span class="modal-val">30 fps</span></div>
+      <div class="modal-row"><span class="modal-key">Frames</span><span class="modal-val" id="exp-frames">0</span></div>
+      <div class="modal-row"><span class="modal-key">Duration</span><span class="modal-val" id="exp-dur">—</span></div>
+      <div class="modal-progress">
+        <div class="modal-progress-fill" id="modal-progress-fill" style="width:0%"></div>
+      </div>
+      <div class="modal-status" id="modal-status">Ready to export</div>
+      <div class="modal-btns">
+        <button class="modal-btn" onclick="App.closeExport()">Cancel</button>
+        <button class="modal-btn primary" onclick="App.startExport()">Export</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
