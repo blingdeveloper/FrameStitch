@@ -360,30 +360,25 @@ const Renderer = {
     }
 
     // Find what to render at currentTime
-    let offset = 0;
+     let offset = 0;
     let curFrame = null, nxtFrame = null, curTrans = null, localTime = 0;
-
     for (let i = 0; i < State.frames.length; i++) {
       const f   = State.frames[i];
       const tr  = State.transitions.find(t => t.afterFrameId === f.id);
       const end = offset + f.dur;
-
+      const transStart = tr ? end - tr.dur / 2 : Infinity;
+      const transEnd   = tr ? end + tr.dur / 2 : Infinity;
+      if (tr && State.currentTime >= transStart && State.currentTime < transEnd) {
+        curFrame  = f;
+        nxtFrame  = State.frames[i + 1] || null;
+        curTrans  = tr;
+        localTime = State.currentTime - transStart;
+        break;
+      }
       if (State.currentTime >= offset && State.currentTime < end) {
         curFrame  = f;
         localTime = State.currentTime - offset;
-        if (tr && localTime >= f.dur - tr.dur/2 && i < State.frames.length - 1) {
-          nxtFrame = State.frames[i+1];
-          curTrans = tr;
-        }
         break;
-      }
-      if (tr && i < State.frames.length - 1) {
-        const ts = end - tr.dur/2, te = end + tr.dur/2;
-        if (State.currentTime >= end && State.currentTime < te) {
-          curFrame = f; nxtFrame = State.frames[i+1]; curTrans = tr;
-          localTime = State.currentTime - ts;
-          break;
-        }
       }
       offset += f.dur;
     }
