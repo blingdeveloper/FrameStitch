@@ -678,11 +678,32 @@ const Timeline = {
     track.addEventListener('dragover', e => { e.preventDefault(); track.classList.add('drop-active'); });
     track.addEventListener('dragleave', () => track.classList.remove('drop-active'));
     track.addEventListener('drop', e => {
-      e.preventDefault();
-      track.classList.remove('drop-active');
-      if (e.dataTransfer.getData('src') === 'lib') {
-        App.addFrameFromLib(e.dataTransfer.getData('libId'));
+  e.preventDefault();
+  track.classList.remove('drop-active');
+  const src = e.dataTransfer.getData('src');
+
+  if (src === 'lib') {
+    App.addFrameFromLib(e.dataTransfer.getData('libId'));
+  }
+
+  if (src === 'move-trans') {
+    // Work out which frame the user dropped onto based on x position
+    const rect   = track.getBoundingClientRect();
+    const dropX  = e.clientX - rect.left + document.getElementById('tl-scroll').scrollLeft;
+    let offset   = 0;
+    let targetId = null;
+    for (let i = 0; i < State.frames.length - 1; i++) {
+      offset += State.frames[i].dur;
+      // Snap to whichever frame boundary the drop is closest to
+      if (dropX < offset * Timeline.pps()) {
+        targetId = State.frames[i].id;
+        break;
       }
+    }
+    // Default to second-to-last frame if dropped past all boundaries
+    if (!targetId) targetId = State.frames[State.frames.length - 2].id;
+    App.moveTransition(e.dataTransfer.getData('transId'), targetId);
+  }
     });
   },
 
@@ -707,6 +728,11 @@ const Timeline = {
         block.textContent       = tr.label;
         block.title             = `${tr.label} · ${tr.dur}s`;
         block.addEventListener('click', () => App.select(tr.id));
+         block.draggable = true;
+block.addEventListener('dragstart', e => {
+  e.dataTransfer.setData('transId', tr.id);
+  e.dataTransfer.setData('src', 'move-trans');
+});
         track.appendChild(block);
       }
     });
@@ -942,6 +968,16 @@ const App = {
     Timeline.render();
     Inspector.render();
     Renderer.draw();
+  },
+ moveTransition(transId, newAfterFrameId) {
+    const tr = State.transitions.find(t => t.id === transId);
+    if (!tr) return;
+    const conflict = State.transitions.find(t => t.afterFrameId === newAfterFrameId && t.id !== transId);
+    if (conflict) { UI.toast('A transition already exists there — delete it first'); return; }
+    this._saveHistory();
+    tr.afterFrameId = newAfterFrameId;
+    Timeline.render();
+    UI.toast('Transition moved');
   },
 
   splitFrame() {
