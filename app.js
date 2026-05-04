@@ -50,6 +50,8 @@ const TRANSITION_DEFS = [
   { type:'slide-left', label:'Slide left',  color:'#e05c3a', dur:0.6 },
   { type:'flash',      label:'Flash',       color:'#ca8a04', dur:0.35 },
   { type:'rotate',     label:'Rotate',      color:'#9333ea', dur:0.8 },
+  { type: 'page-turn-right', label: 'Page Turn Right', color: '#be185d', dur: 0.9 },
+  { type: 'page-turn-left',  label: 'Page Turn Left',  color: '#9f1239', dur: 0.9 },
 ];
 
 /* ============================================================
@@ -228,7 +230,88 @@ const Transitions = {
         ctx.restore();
         ctx.globalAlpha = 1;
         break;
+case 'page-turn-right': {
+  // Page curls from right edge to left, revealing canB underneath
+  ctx.drawImage(canB, 0, 0); // destination underneath
 
+  const foldX = W * (1 - p); // fold line moves left as p increases
+
+  // Draw the visible portion of canA (left of the fold)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, foldX, H);
+  ctx.clip();
+  ctx.drawImage(canA, 0, 0);
+  ctx.restore();
+
+  // Shadow cast by the turning page onto canB
+  const shadowGrad = ctx.createLinearGradient(foldX, 0, foldX + 40, 0);
+  shadowGrad.addColorStop(0,   'rgba(0,0,0,0.35)');
+  shadowGrad.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = shadowGrad;
+  ctx.fillRect(foldX, 0, 40, H);
+
+  // The curl itself — a thin sliver of canA, skewed to fake perspective
+  const curlWidth = Math.min(60, foldX + 30);
+  ctx.save();
+  ctx.transform(1, 0, 0.3 * p, 1, 0, 0); // horizontal shear for curl effect
+  ctx.beginPath();
+  ctx.rect(foldX, 0, curlWidth, H);
+  ctx.clip();
+  ctx.globalAlpha = 0.55 - p * 0.3;
+  ctx.drawImage(canA, 0, 0);
+  ctx.globalAlpha = 1;
+  // Back-of-page highlight
+  const curlHighlight = ctx.createLinearGradient(foldX, 0, foldX + curlWidth, 0);
+  curlHighlight.addColorStop(0,   'rgba(255,255,255,0.25)');
+  curlHighlight.addColorStop(0.4, 'rgba(255,255,255,0.05)');
+  curlHighlight.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = curlHighlight;
+  ctx.fillRect(foldX, 0, curlWidth, H);
+  ctx.restore();
+  break;
+}
+
+case 'page-turn-left': {
+  // Mirror of page-turn-right — curl travels from left edge to right
+  ctx.drawImage(canB, 0, 0);
+
+  const foldX = W * p; // fold line moves right as p increases
+
+  // Draw the visible portion of canA (right of the fold)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(foldX, 0, W - foldX, H);
+  ctx.clip();
+  ctx.drawImage(canA, 0, 0);
+  ctx.restore();
+
+  // Shadow cast onto canB
+  const shadowGrad = ctx.createLinearGradient(foldX, 0, foldX - 40, 0);
+  shadowGrad.addColorStop(0,   'rgba(0,0,0,0.35)');
+  shadowGrad.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = shadowGrad;
+  ctx.fillRect(foldX - 40, 0, 40, H);
+
+  // The curl sliver
+  const curlWidth = Math.min(60, W - foldX + 30);
+  ctx.save();
+  ctx.transform(1, 0, -0.3 * p, 1, 0, 0);
+  ctx.beginPath();
+  ctx.rect(foldX - curlWidth, 0, curlWidth, H);
+  ctx.clip();
+  ctx.globalAlpha = 0.55 - p * 0.3;
+  ctx.drawImage(canA, 0, 0);
+  ctx.globalAlpha = 1;
+  const curlHighlight = ctx.createLinearGradient(foldX, 0, foldX - curlWidth, 0);
+  curlHighlight.addColorStop(0,   'rgba(255,255,255,0.25)');
+  curlHighlight.addColorStop(0.4, 'rgba(255,255,255,0.05)');
+  curlHighlight.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = curlHighlight;
+  ctx.fillRect(foldX - curlWidth, 0, curlWidth, H);
+  ctx.restore();
+  break;
+}
       default:
         ctx.drawImage(canA, 0, 0);
         ctx.globalAlpha = p;
