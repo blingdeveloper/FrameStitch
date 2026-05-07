@@ -1053,18 +1053,47 @@ const App = {
   },
 
   startExport() {
-    let progress = 0;
-    document.getElementById('modal-status').textContent = 'Rendering frames…';
-    const iv = setInterval(() => {
-      progress += 2 + Math.random() * 3;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(iv);
-        document.getElementById('modal-status').textContent = 'Done — FrameStitch_export.mp4 ready';
-      }
-      document.getElementById('modal-progress-fill').style.width = progress.toFixed(0) + '%';
-    }, 70);
-  },
+  if (State.frames.length === 0) return;
+
+  const canvas   = document.getElementById('preview-canvas');
+  const stream   = canvas.captureStream(30); // 30fps
+  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+  const chunks   = [];
+
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'FrameStitch_export.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+    document.getElementById('modal-status').textContent = 'Done — file downloaded!';
+  };
+
+  // Seek to start and play through the whole video while recording
+  State.currentTime = 0;
+  recorder.start();
+  document.getElementById('modal-status').textContent = 'Recording…';
+
+  const fps      = 30;
+  const interval = 1000 / fps;
+  let   progress = 0;
+
+  const renderLoop = setInterval(() => {
+    State.currentTime += 1 / fps;
+    progress = (State.currentTime / State.totalDur) * 100;
+    document.getElementById('modal-progress-fill').style.width = progress.toFixed(0) + '%';
+    Renderer.draw();
+
+    if (State.currentTime >= State.totalDur) {
+      clearInterval(renderLoop);
+      recorder.stop();
+    }
+  }, interval);
+},
 
   undo() {
     if (!State.history.length) { UI.toast('Nothing to undo'); return; }
