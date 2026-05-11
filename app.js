@@ -97,15 +97,20 @@ const Paint = {
   },
 
   preview(canvas, item, t) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
 
-    // Real uploaded image — draw it directly
-    if (item.uploadedImg) {
-      ctx.drawImage(item.uploadedImg, 0, 0, w, h);
-      return;
-    }
+  // Uploaded video — draw the current video frame
+  if (item.isVideo && item.videoEl) {
+    ctx.drawImage(item.videoEl, 0, 0, w, h);
+    return;
+  }
 
+  // Uploaded image — draw it directly
+  if (item.uploadedImg && !item.isVideo) {
+    ctx.drawImage(item.uploadedImg, 0, 0, w, h);
+    return;
+  }
     const pal = item.pal, p = pal.bg;
     const wave = Math.sin(t * 0.8) * 5;
 
@@ -440,6 +445,18 @@ const Player = {
     State.currentTime = Math.min(State.totalDur, State.currentTime + dt);
     UI.updateTransport();
     Timeline.updatePlayhead();
+     // Sync any video frames in the current library to the playback position
+let vOffset = 0;
+for (const f of State.frames) {
+  const lib = State.library.find(l => l.id === f.libId);
+  if (lib && lib.isVideo && lib.videoEl) {
+    const localT = State.currentTime - vOffset;
+    if (localT >= 0 && localT <= f.dur) {
+      lib.videoEl.currentTime = Math.min(localT, lib.videoEl.duration);
+    }
+  }
+  vOffset += f.dur;
+}
     Renderer.draw();
     Timeline.scrollToPlayhead();
     if (State.currentTime >= State.totalDur) {
@@ -487,10 +504,14 @@ const Upload = {
     e.target.value = '';
   },
   handleFiles(files) {
-    const valid = files.filter(f => f.type.startsWith('image/'));
-    if (!valid.length) { UI.toast('Please upload image files (JPG, PNG, WebP, GIF)'); return; }
-    UI.toast(`Loading ${valid.length} image${valid.length > 1 ? 's' : ''}…`);
-    valid.forEach(f => this._loadFile(f));
+  const valid = files.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+  if (!valid.length) { UI.toast('Please upload image or video files'); return; }
+  UI.toast(`Loading ${valid.length} file${valid.length > 1 ? 's' : ''}…`);
+  valid.forEach(f => {
+    if (f.type.startsWith('image/')) this._loadFile(f);
+    else this._loadVideo(f);
+  });
+},
   },
   _loadFile(file) {
     const id    = `up${State.uid++}`;
@@ -498,6 +519,35 @@ const Upload = {
     const entry = { id, label, uploaded: true, uploadedImg: null, pal: SAMPLE_PALETTES[0], dur: 5, loading: true };
     State.library.unshift(entry);
     LibraryUI.render();
+  
+   const video = document.createElement('video');
+  video.preload  = 'metadata';
+  video.muted    = true;
+  video.src      = URL.createObjectURL(file);
+
+  video.onloadedmetadata = () => {
+    entry.dur      = parseFloat(video.duration.toFixed(1));
+    entry.videoEl  = video;
+    entry.loading  = false;
+
+    // Grab a thumbnail frame from the video
+    video.currentTime = Math.min(0.5, video.duration * 0.1);
+  };
+
+  video.onseeked = () => {
+    if (entry.uploadedImg) return; // already captured
+    const c   = document.createElement('canvas');
+    c.width   = 160; c.height = 90;
+    c.getContext('2d').drawImage(video, 0, 0, 160, 90);
+    const img = new Image();
+    img.src   = c.toDataURL();
+    img.onload = () => {
+      entry.uploadedImg = img; // reuse the same thumbnail slot
+      LibraryUI.render();
+      UI.toast(`"${label}" added to library`);
+    };
+  };
+},
 
     const reader = new FileReader();
     reader.onload = ev => {
