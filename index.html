@@ -68,7 +68,7 @@
           ondragleave="Upload.dzLeave()"
           ondrop="Upload.dzDrop(event)"
           onclick="App.triggerUpload()">
-          <input type="file" accept="image/*" multiple id="file-input" onchange="Upload.onFileInput(event)">
+          <input type="file" accept="image/*,video/*" multiple id="file-input" onchange="Upload.onFileInput(event)">
           <div class="dz-icon">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M10 3v10M6.5 5.5 10 2l3.5 3.5"/>
@@ -77,7 +77,7 @@
           </div>
           <div class="dz-title">Drop images here</div>
           <div class="dz-sub">or click to browse</div>
-          <div class="dz-formats">JPG · PNG · WebP · GIF</div>
+          <div class="dz-formats">JPG · PNG · WebP · GIF · MP4 · MOV · WebM</div>
         </div>
         <div class="sec-label" id="lib-label">Sample images</div>
         <div class="img-grid" id="img-grid"></div>
