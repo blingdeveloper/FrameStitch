@@ -496,7 +496,8 @@ const Upload = {
   dzDrop(e) {
     e.preventDefault();
     document.getElementById('drop-zone').classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+   const files = Array.from(e.dataTransfer.files).filter(f =>
+  f.type.startsWith('image/') || f.type.startsWith('video/'));
     if (files.length) this.handleFiles(files);
   },
   onFileInput(e) {
@@ -512,44 +513,14 @@ const Upload = {
     else this._loadVideo(f);
   });
 },
-  },
   _loadFile(file) {
     const id    = `up${State.uid++}`;
     const label = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
     const entry = { id, label, uploaded: true, uploadedImg: null, pal: SAMPLE_PALETTES[0], dur: 5, loading: true };
     State.library.unshift(entry);
     LibraryUI.render();
-  
-   const video = document.createElement('video');
-  video.preload  = 'metadata';
-  video.muted    = true;
-  video.src      = URL.createObjectURL(file);
-
-  video.onloadedmetadata = () => {
-    entry.dur      = parseFloat(video.duration.toFixed(1));
-    entry.videoEl  = video;
-    entry.loading  = false;
-
-    // Grab a thumbnail frame from the video
-    video.currentTime = Math.min(0.5, video.duration * 0.1);
-  };
-
-  video.onseeked = () => {
-    if (entry.uploadedImg) return; // already captured
-    const c   = document.createElement('canvas');
-    c.width   = 160; c.height = 90;
-    c.getContext('2d').drawImage(video, 0, 0, 160, 90);
-    const img = new Image();
-    img.src   = c.toDataURL();
-    img.onload = () => {
-      entry.uploadedImg = img; // reuse the same thumbnail slot
-      LibraryUI.render();
-      UI.toast(`"${label}" added to library`);
-    };
-  };
-},
-
-    const reader = new FileReader();
+     
+      const reader = new FileReader();
     reader.onload = ev => {
       const img = new Image();
       img.onload = () => {
@@ -561,8 +532,47 @@ const Upload = {
       img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
+},
+   _loadVideo(file) {
+    const id    = `up${State.uid++}`;
+    const label = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+    const entry = {
+      id, label, uploaded: true, isVideo: true,
+      uploadedImg: null, videoEl: null,
+      pal: SAMPLE_PALETTES[0], dur: null, loading: true
+    };
+    State.library.unshift(entry);
+    LibraryUI.render();
+
+    const video   = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted   = true;
+    video.src     = URL.createObjectURL(file);
+
+    video.onloadedmetadata = () => {
+      entry.dur     = parseFloat(video.duration.toFixed(1));
+      entry.videoEl = video;
+      entry.loading = false;
+      video.currentTime = Math.min(0.5, video.duration * 0.1);
+    };
+
+    video.onseeked = () => {
+      if (entry.uploadedImg) return;
+      const c = document.createElement('canvas');
+      c.width = 160; c.height = 90;
+      c.getContext('2d').drawImage(video, 0, 0, 160, 90);
+      const img = new Image();
+      img.src   = c.toDataURL();
+      img.onload = () => {
+        entry.uploadedImg = img;
+        LibraryUI.render();
+        UI.toast(`"${label}" added to library`);
+      };
+    };
   },
 };
+
+   
 
 /* ============================================================
    LIBRARY UI
