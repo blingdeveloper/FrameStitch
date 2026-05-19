@@ -97,20 +97,20 @@ const Paint = {
   },
 
   preview(canvas, item, t) {
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
 
-  // Uploaded video — draw the current video frame
-  if (item.isVideo && item.videoEl) {
-    ctx.drawImage(item.videoEl, 0, 0, w, h);
-    return;
-  }
+    // Uploaded video — draw the current video frame
+    if (item.isVideo && item.videoEl) {
+      ctx.drawImage(item.videoEl, 0, 0, w, h);
+      return;
+    }
 
-  // Uploaded image — draw it directly
-  if (item.uploadedImg && !item.isVideo) {
-    ctx.drawImage(item.uploadedImg, 0, 0, w, h);
-    return;
-  }
+    // Uploaded image — draw it directly
+    if (item.uploadedImg && !item.isVideo) {
+      ctx.drawImage(item.uploadedImg, 0, 0, w, h);
+      return;
+    }
     const pal = item.pal, p = pal.bg;
     const wave = Math.sin(t * 0.8) * 5;
 
@@ -235,88 +235,73 @@ const Transitions = {
         ctx.restore();
         ctx.globalAlpha = 1;
         break;
-case 'page-turn-right': {
-  // Page curls from right edge to left, revealing canB underneath
-  ctx.drawImage(canB, 0, 0); // destination underneath
 
-  const foldX = W * (1 - p); // fold line moves left as p increases
+      case 'page-turn-right': {
+        ctx.drawImage(canB, 0, 0);
+        const foldX = W * (1 - p);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, foldX, H);
+        ctx.clip();
+        ctx.drawImage(canA, 0, 0);
+        ctx.restore();
+        const shadowGrad = ctx.createLinearGradient(foldX, 0, foldX + 40, 0);
+        shadowGrad.addColorStop(0,   'rgba(0,0,0,0.35)');
+        shadowGrad.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.fillStyle = shadowGrad;
+        ctx.fillRect(foldX, 0, 40, H);
+        const curlWidth = Math.min(60, foldX + 30);
+        ctx.save();
+        ctx.transform(1, 0, 0.3 * p, 1, 0, 0);
+        ctx.beginPath();
+        ctx.rect(foldX, 0, curlWidth, H);
+        ctx.clip();
+        ctx.globalAlpha = 0.55 - p * 0.3;
+        ctx.drawImage(canA, 0, 0);
+        ctx.globalAlpha = 1;
+        const curlHighlight = ctx.createLinearGradient(foldX, 0, foldX + curlWidth, 0);
+        curlHighlight.addColorStop(0,   'rgba(255,255,255,0.25)');
+        curlHighlight.addColorStop(0.4, 'rgba(255,255,255,0.05)');
+        curlHighlight.addColorStop(1,   'rgba(255,255,255,0)');
+        ctx.fillStyle = curlHighlight;
+        ctx.fillRect(foldX, 0, curlWidth, H);
+        ctx.restore();
+        break;
+      }
 
-  // Draw the visible portion of canA (left of the fold)
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, foldX, H);
-  ctx.clip();
-  ctx.drawImage(canA, 0, 0);
-  ctx.restore();
+      case 'page-turn-left': {
+        ctx.drawImage(canB, 0, 0);
+        const foldX = W * p;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(foldX, 0, W - foldX, H);
+        ctx.clip();
+        ctx.drawImage(canA, 0, 0);
+        ctx.restore();
+        const shadowGrad = ctx.createLinearGradient(foldX, 0, foldX - 40, 0);
+        shadowGrad.addColorStop(0,   'rgba(0,0,0,0.35)');
+        shadowGrad.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.fillStyle = shadowGrad;
+        ctx.fillRect(foldX - 40, 0, 40, H);
+        const curlWidth = Math.min(60, W - foldX + 30);
+        ctx.save();
+        ctx.transform(1, 0, -0.3 * p, 1, 0, 0);
+        ctx.beginPath();
+        ctx.rect(foldX - curlWidth, 0, curlWidth, H);
+        ctx.clip();
+        ctx.globalAlpha = 0.55 - p * 0.3;
+        ctx.drawImage(canA, 0, 0);
+        ctx.globalAlpha = 1;
+        const curlHighlight = ctx.createLinearGradient(foldX, 0, foldX - curlWidth, 0);
+        curlHighlight.addColorStop(0,   'rgba(255,255,255,0.25)');
+        curlHighlight.addColorStop(0.4, 'rgba(255,255,255,0.05)');
+        curlHighlight.addColorStop(1,   'rgba(255,255,255,0)');
+        ctx.fillStyle = curlHighlight;
+        ctx.fillRect(foldX - curlWidth, 0, curlWidth, H);
+        ctx.restore();
+        break;
+      }
 
-  // Shadow cast by the turning page onto canB
-  const shadowGrad = ctx.createLinearGradient(foldX, 0, foldX + 40, 0);
-  shadowGrad.addColorStop(0,   'rgba(0,0,0,0.35)');
-  shadowGrad.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = shadowGrad;
-  ctx.fillRect(foldX, 0, 40, H);
-
-  // The curl itself — a thin sliver of canA, skewed to fake perspective
-  const curlWidth = Math.min(60, foldX + 30);
-  ctx.save();
-  ctx.transform(1, 0, 0.3 * p, 1, 0, 0); // horizontal shear for curl effect
-  ctx.beginPath();
-  ctx.rect(foldX, 0, curlWidth, H);
-  ctx.clip();
-  ctx.globalAlpha = 0.55 - p * 0.3;
-  ctx.drawImage(canA, 0, 0);
-  ctx.globalAlpha = 1;
-  // Back-of-page highlight
-  const curlHighlight = ctx.createLinearGradient(foldX, 0, foldX + curlWidth, 0);
-  curlHighlight.addColorStop(0,   'rgba(255,255,255,0.25)');
-  curlHighlight.addColorStop(0.4, 'rgba(255,255,255,0.05)');
-  curlHighlight.addColorStop(1,   'rgba(255,255,255,0)');
-  ctx.fillStyle = curlHighlight;
-  ctx.fillRect(foldX, 0, curlWidth, H);
-  ctx.restore();
-  break;
-}
-
-case 'page-turn-left': {
-  // Mirror of page-turn-right — curl travels from left edge to right
-  ctx.drawImage(canB, 0, 0);
-
-  const foldX = W * p; // fold line moves right as p increases
-
-  // Draw the visible portion of canA (right of the fold)
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(foldX, 0, W - foldX, H);
-  ctx.clip();
-  ctx.drawImage(canA, 0, 0);
-  ctx.restore();
-
-  // Shadow cast onto canB
-  const shadowGrad = ctx.createLinearGradient(foldX, 0, foldX - 40, 0);
-  shadowGrad.addColorStop(0,   'rgba(0,0,0,0.35)');
-  shadowGrad.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = shadowGrad;
-  ctx.fillRect(foldX - 40, 0, 40, H);
-
-  // The curl sliver
-  const curlWidth = Math.min(60, W - foldX + 30);
-  ctx.save();
-  ctx.transform(1, 0, -0.3 * p, 1, 0, 0);
-  ctx.beginPath();
-  ctx.rect(foldX - curlWidth, 0, curlWidth, H);
-  ctx.clip();
-  ctx.globalAlpha = 0.55 - p * 0.3;
-  ctx.drawImage(canA, 0, 0);
-  ctx.globalAlpha = 1;
-  const curlHighlight = ctx.createLinearGradient(foldX, 0, foldX - curlWidth, 0);
-  curlHighlight.addColorStop(0,   'rgba(255,255,255,0.25)');
-  curlHighlight.addColorStop(0.4, 'rgba(255,255,255,0.05)');
-  curlHighlight.addColorStop(1,   'rgba(255,255,255,0)');
-  ctx.fillStyle = curlHighlight;
-  ctx.fillRect(foldX - curlWidth, 0, curlWidth, H);
-  ctx.restore();
-  break;
-}
       default:
         ctx.drawImage(canA, 0, 0);
         ctx.globalAlpha = p;
@@ -364,8 +349,7 @@ const Renderer = {
       return;
     }
 
-    // Find what to render at currentTime
-     let offset = 0;
+    let offset = 0;
     let curFrame = null, nxtFrame = null, curTrans = null, localTime = 0;
     for (let i = 0; i < State.frames.length; i++) {
       const f   = State.frames[i];
@@ -445,18 +429,18 @@ const Player = {
     State.currentTime = Math.min(State.totalDur, State.currentTime + dt);
     UI.updateTransport();
     Timeline.updatePlayhead();
-     // Sync any video frames in the current library to the playback position
-let vOffset = 0;
-for (const f of State.frames) {
-  const lib = State.library.find(l => l.id === f.libId);
-  if (lib && lib.isVideo && lib.videoEl) {
-    const localT = State.currentTime - vOffset;
-    if (localT >= 0 && localT <= f.dur) {
-      lib.videoEl.currentTime = Math.min(localT, lib.videoEl.duration);
+    // Sync any video frames in the current library to the playback position
+    let vOffset = 0;
+    for (const f of State.frames) {
+      const lib = State.library.find(l => l.id === f.libId);
+      if (lib && lib.isVideo && lib.videoEl) {
+        const localT = State.currentTime - vOffset;
+        if (localT >= 0 && localT <= f.dur) {
+          lib.videoEl.currentTime = Math.min(localT, lib.videoEl.duration);
+        }
+      }
+      vOffset += f.dur;
     }
-  }
-  vOffset += f.dur;
-}
     Renderer.draw();
     Timeline.scrollToPlayhead();
     if (State.currentTime >= State.totalDur) {
@@ -496,8 +480,8 @@ const Upload = {
   dzDrop(e) {
     e.preventDefault();
     document.getElementById('drop-zone').classList.remove('drag-over');
-   const files = Array.from(e.dataTransfer.files).filter(f =>
-  f.type.startsWith('image/') || f.type.startsWith('video/'));
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      f.type.startsWith('image/') || f.type.startsWith('video/'));
     if (files.length) this.handleFiles(files);
   },
   onFileInput(e) {
@@ -505,22 +489,21 @@ const Upload = {
     e.target.value = '';
   },
   handleFiles(files) {
-  const valid = files.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
-  if (!valid.length) { UI.toast('Please upload image or video files'); return; }
-  UI.toast(`Loading ${valid.length} file${valid.length > 1 ? 's' : ''}…`);
-  valid.forEach(f => {
-    if (f.type.startsWith('image/')) this._loadFile(f);
-    else this._loadVideo(f);
-  });
-},
+    const valid = files.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+    if (!valid.length) { UI.toast('Please upload image or video files'); return; }
+    UI.toast(`Loading ${valid.length} file${valid.length > 1 ? 's' : ''}…`);
+    valid.forEach(f => {
+      if (f.type.startsWith('image/')) this._loadFile(f);
+      else this._loadVideo(f);
+    });
+  },
   _loadFile(file) {
     const id    = `up${State.uid++}`;
     const label = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
     const entry = { id, label, uploaded: true, uploadedImg: null, pal: SAMPLE_PALETTES[0], dur: 5, loading: true };
     State.library.unshift(entry);
     LibraryUI.render();
-     
-      const reader = new FileReader();
+    const reader = new FileReader();
     reader.onload = ev => {
       const img = new Image();
       img.onload = () => {
@@ -532,8 +515,8 @@ const Upload = {
       img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
-},
-   _loadVideo(file) {
+  },
+  _loadVideo(file) {
     const id    = `up${State.uid++}`;
     const label = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
     const entry = {
@@ -571,8 +554,6 @@ const Upload = {
     };
   },
 };
-
-   
 
 /* ============================================================
    LIBRARY UI
@@ -738,32 +719,29 @@ const Timeline = {
     track.addEventListener('dragover', e => { e.preventDefault(); track.classList.add('drop-active'); });
     track.addEventListener('dragleave', () => track.classList.remove('drop-active'));
     track.addEventListener('drop', e => {
-  e.preventDefault();
-  track.classList.remove('drop-active');
-  const src = e.dataTransfer.getData('src');
+      e.preventDefault();
+      track.classList.remove('drop-active');
+      const src = e.dataTransfer.getData('src');
 
-  if (src === 'lib') {
-    App.addFrameFromLib(e.dataTransfer.getData('libId'));
-  }
-
-  if (src === 'move-trans') {
-    // Work out which frame the user dropped onto based on x position
-    const rect   = track.getBoundingClientRect();
-    const dropX  = e.clientX - rect.left + document.getElementById('tl-scroll').scrollLeft;
-    let offset   = 0;
-    let targetId = null;
-    for (let i = 0; i < State.frames.length - 1; i++) {
-      offset += State.frames[i].dur;
-      // Snap to whichever frame boundary the drop is closest to
-      if (dropX < offset * Timeline.pps()) {
-        targetId = State.frames[i].id;
-        break;
+      if (src === 'lib') {
+        App.addFrameFromLib(e.dataTransfer.getData('libId'));
       }
-    }
-    // Default to second-to-last frame if dropped past all boundaries
-    if (!targetId) targetId = State.frames[State.frames.length - 2].id;
-    App.moveTransition(e.dataTransfer.getData('transId'), targetId);
-  }
+
+      if (src === 'move-trans') {
+        const rect   = track.getBoundingClientRect();
+        const dropX  = e.clientX - rect.left + document.getElementById('tl-scroll').scrollLeft;
+        let offset   = 0;
+        let targetId = null;
+        for (let i = 0; i < State.frames.length - 1; i++) {
+          offset += State.frames[i].dur;
+          if (dropX < offset * Timeline.pps()) {
+            targetId = State.frames[i].id;
+            break;
+          }
+        }
+        if (!targetId) targetId = State.frames[State.frames.length - 2].id;
+        App.moveTransition(e.dataTransfer.getData('transId'), targetId);
+      }
     });
   },
 
@@ -788,11 +766,11 @@ const Timeline = {
         block.textContent       = tr.label;
         block.title             = `${tr.label} · ${tr.dur}s`;
         block.addEventListener('click', () => App.select(tr.id));
-         block.draggable = true;
-block.addEventListener('dragstart', e => {
-  e.dataTransfer.setData('transId', tr.id);
-  e.dataTransfer.setData('src', 'move-trans');
-});
+        block.draggable = true;
+        block.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('transId', tr.id);
+          e.dataTransfer.setData('src', 'move-trans');
+        });
         track.appendChild(block);
       }
     });
@@ -835,78 +813,174 @@ block.addEventListener('dragstart', e => {
 
 /* ============================================================
    INSPECTOR UI
+   — All user-controlled values written via .textContent,
+     .value, or .style to prevent XSS. No innerHTML for
+     any data derived from frame labels, filenames, or IDs.
    ============================================================ */
 const Inspector = {
+
+  // ── small DOM helpers ────────────────────────────────────────
+
+  _el(tag, className) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    return el;
+  },
+
+  _sectionLabel(text) {
+    const el = this._el('div', 'prop-section-label');
+    el.textContent = text;
+    return el;
+  },
+
+  _propRow(keyText, valueEl) {
+    const row = this._el('div', 'prop-row');
+    const key = this._el('span', 'prop-key');
+    key.textContent = keyText;
+    row.appendChild(key);
+    row.appendChild(valueEl);
+    return row;
+  },
+
+  _textInput(value, onChange) {
+    const input = this._el('input', 'prop-input');
+    input.value = value;
+    input.addEventListener('change', () => onChange(input.value));
+    return input;
+  },
+
+  _numberInput(value, step, min, max, onChange) {
+    const input = this._el('input', 'prop-input');
+    input.type  = 'number';
+    input.step  = step;
+    input.min   = min;
+    if (max !== undefined) input.max = max;
+    input.value = value;
+    input.addEventListener('change', () => onChange(+input.value));
+    return input;
+  },
+
+  // ── main render ─────────────────────────────────────────────
+
   render() {
     const body  = document.getElementById('insp-body');
     const frame = State.frames.find(f => f.id === State.selectedId);
     const trans = State.transitions.find(t => t.id === State.selectedId);
 
+    body.innerHTML = '';
+
     if (!frame && !trans) {
-      body.innerHTML = `<div class="no-sel"><strong>Nothing selected</strong>Click a frame or transition on the timeline to edit its properties.</div>`;
+      const msg = this._el('div', 'no-sel');
+      const strong = document.createElement('strong');
+      strong.textContent = 'Nothing selected';
+      msg.appendChild(strong);
+      msg.appendChild(document.createTextNode('Click a frame or transition on the timeline to edit its properties.'));
+      body.appendChild(msg);
       return;
     }
 
     if (frame) {
-      const lib = State.library.find(l => l.id === frame.libId);
-      let thumbHtml = '';
-      if (lib && lib.uploadedImg) {
-        thumbHtml = `<div class="insp-thumb"><img src="${lib.uploadedImg.src}" alt="${frame.label}"></div>`;
-      } else if (lib) {
-        thumbHtml = `<div class="insp-thumb"><canvas id="insp-thumb-canvas" width="180" height="101"></canvas></div>`;
-      }
-      body.innerHTML = `
-        ${thumbHtml}
-        <div class="prop-section">
-          <div class="prop-section-label">Frame</div>
-          <div class="prop-row">
-            <span class="prop-key">Label</span>
-            <input class="prop-input" value="${frame.label}" onchange="App.updateFrame('${frame.id}','label',this.value)">
-          </div>
-          <div class="prop-row">
-            <span class="prop-key">Duration</span>
-            <input class="prop-input" type="number" step="0.1" min="0.1" value="${frame.dur.toFixed(1)}"
-              onchange="App.updateFrame('${frame.id}','dur',+this.value)">
-          </div>
-          <div class="prop-row">
-            <span class="prop-key">Color</span>
-            <div class="color-swatch" style="background:${frame.color}" onclick="App.cycleColor('${frame.id}')"></div>
-          </div>
-        </div>
-        <div class="insp-tag ${lib && lib.uploaded ? 'uploaded' : 'sample'}">
-          ${lib && lib.uploaded ? 'Uploaded image' : 'Sample image'}
-        </div>`;
-      if (lib && !lib.uploadedImg) {
-        setTimeout(() => {
-          const c = document.getElementById('insp-thumb-canvas');
-          if (c) Paint.thumb(c, lib.pal);
-        }, 0);
-      }
-
+      this._renderFrame(body, frame);
     } else if (trans) {
-      body.innerHTML = `
-        <div style="width:100%;height:56px;border-radius:10px;background:${trans.color}10;border:1px solid ${trans.color}20;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-          <svg width="44" height="26" viewBox="0 0 44 26">
-            <rect x="0" y="1" width="18" height="24" rx="3" fill="${trans.color}" opacity=".4"/>
-            <rect x="26" y="1" width="18" height="24" rx="3" fill="${trans.color}" opacity=".9"/>
-            <line x1="18" y1="13" x2="26" y2="13" stroke="${trans.color}" stroke-width="2"/>
-          </svg>
-        </div>
-        <div class="prop-section">
-          <div class="prop-section-label">Transition</div>
-          <div class="prop-row">
-            <span class="prop-key">Type</span>
-            <select class="prop-select" onchange="App.updateTransition('${trans.id}','type',this.value)">
-              ${TRANSITION_DEFS.map(t => `<option value="${t.type}"${t.type===trans.type?' selected':''}>${t.label}</option>`).join('')}
-            </select>
-          </div>
-          <div class="prop-row">
-            <span class="prop-key">Duration</span>
-            <input class="prop-input" type="number" step="0.05" min="0.1" max="3" value="${trans.dur.toFixed(2)}"
-              onchange="App.updateTransition('${trans.id}','dur',+this.value)">
-          </div>
-        </div>`;
+      this._renderTransition(body, trans);
     }
+  },
+
+  _renderFrame(body, frame) {
+    const lib = State.library.find(l => l.id === frame.libId);
+
+    // Thumbnail
+    if (lib && lib.uploadedImg) {
+      const wrap = this._el('div', 'insp-thumb');
+      const img  = document.createElement('img');
+      img.src    = lib.uploadedImg.src;           // blob/data URL — safe
+      img.alt    = frame.label;                   // textContent equivalent on alt
+      wrap.appendChild(img);
+      body.appendChild(wrap);
+    } else if (lib) {
+      const wrap   = this._el('div', 'insp-thumb');
+      const canvas = document.createElement('canvas');
+      canvas.id     = 'insp-thumb-canvas';
+      canvas.width  = 180;
+      canvas.height = 101;
+      wrap.appendChild(canvas);
+      body.appendChild(wrap);
+      setTimeout(() => {
+        const c = document.getElementById('insp-thumb-canvas');
+        if (c) Paint.thumb(c, lib.pal);
+      }, 0);
+    }
+
+    // Section
+    const section = this._el('div', 'prop-section');
+    section.appendChild(this._sectionLabel('Frame'));
+
+    // Label row
+    section.appendChild(this._propRow('Label',
+      this._textInput(frame.label, val => App.updateFrame(frame.id, 'label', val))
+    ));
+
+    // Duration row
+    section.appendChild(this._propRow('Duration',
+      this._numberInput(frame.dur.toFixed(1), '0.1', '0.1', undefined,
+        val => App.updateFrame(frame.id, 'dur', val))
+    ));
+
+    // Color row
+    const swatch = this._el('div', 'color-swatch');
+    swatch.style.background = frame.color;
+    swatch.addEventListener('click', () => App.cycleColor(frame.id));
+    section.appendChild(this._propRow('Color', swatch));
+
+    body.appendChild(section);
+
+    // Tag
+    const tag = this._el('div', `insp-tag ${lib && lib.uploaded ? 'uploaded' : 'sample'}`);
+    tag.textContent = lib && lib.uploaded ? 'Uploaded image' : 'Sample image';
+    body.appendChild(tag);
+  },
+
+  _renderTransition(body, trans) {
+    // Icon preview — uses only trusted constant colors from TRANSITION_DEFS
+    const iconWrap = this._el('div');
+    Object.assign(iconWrap.style, {
+      width: '100%', height: '56px', borderRadius: '10px',
+      background: trans.color + '10', border: `1px solid ${trans.color}20`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      marginBottom: '12px',
+    });
+    // SVG is built from constant color values — not user input — so innerHTML is safe here
+    iconWrap.innerHTML = `
+      <svg width="44" height="26" viewBox="0 0 44 26">
+        <rect x="0" y="1" width="18" height="24" rx="3" fill="${trans.color}" opacity=".4"/>
+        <rect x="26" y="1" width="18" height="24" rx="3" fill="${trans.color}" opacity=".9"/>
+        <line x1="18" y1="13" x2="26" y2="13" stroke="${trans.color}" stroke-width="2"/>
+      </svg>`;
+    body.appendChild(iconWrap);
+
+    // Section
+    const section = this._el('div', 'prop-section');
+    section.appendChild(this._sectionLabel('Transition'));
+
+    // Type select
+    const select = this._el('select', 'prop-select');
+    TRANSITION_DEFS.forEach(t => {
+      const opt   = document.createElement('option');
+      opt.value   = t.type;                       // constant — safe
+      opt.textContent = t.label;                  // constant — safe
+      opt.selected = (t.type === trans.type);
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => App.updateTransition(trans.id, 'type', select.value));
+    section.appendChild(this._propRow('Type', select));
+
+    // Duration
+    section.appendChild(this._propRow('Duration',
+      this._numberInput(trans.dur.toFixed(2), '0.05', '0.1', '3',
+        val => App.updateTransition(trans.id, 'dur', val))
+    ));
+
+    body.appendChild(section);
   },
 };
 
@@ -1029,7 +1103,8 @@ const App = {
     Inspector.render();
     Renderer.draw();
   },
- moveTransition(transId, newAfterFrameId) {
+
+  moveTransition(transId, newAfterFrameId) {
     const tr = State.transitions.find(t => t.id === transId);
     if (!tr) return;
     const conflict = State.transitions.find(t => t.afterFrameId === newAfterFrameId && t.id !== transId);
@@ -1113,47 +1188,45 @@ const App = {
   },
 
   startExport() {
-  if (State.frames.length === 0) return;
+    if (State.frames.length === 0) return;
 
-  const canvas   = document.getElementById('preview-canvas');
-  const stream   = canvas.captureStream(30); // 30fps
-  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-  const chunks   = [];
+    const canvas   = document.getElementById('preview-canvas');
+    const stream   = canvas.captureStream(30);
+    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    const chunks   = [];
 
-  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-  recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = 'FrameStitch_export.webm';
-    a.click();
-    URL.revokeObjectURL(url);
-    document.getElementById('modal-status').textContent = 'Done — file downloaded!';
-  };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'FrameStitch_export.webm';
+      a.click();
+      URL.revokeObjectURL(url);
+      document.getElementById('modal-status').textContent = 'Done — file downloaded!';
+    };
 
-  // Seek to start and play through the whole video while recording
-  State.currentTime = 0;
-  recorder.start();
-  document.getElementById('modal-status').textContent = 'Recording…';
+    State.currentTime = 0;
+    recorder.start();
+    document.getElementById('modal-status').textContent = 'Recording…';
 
-  const fps      = 30;
-  const interval = 1000 / fps;
-  let   progress = 0;
+    const fps      = 30;
+    const interval = 1000 / fps;
 
-  const renderLoop = setInterval(() => {
-    State.currentTime += 1 / fps;
-    progress = (State.currentTime / State.totalDur) * 100;
-    document.getElementById('modal-progress-fill').style.width = progress.toFixed(0) + '%';
-    Renderer.draw();
+    const renderLoop = setInterval(() => {
+      State.currentTime += 1 / fps;
+      const progress = (State.currentTime / State.totalDur) * 100;
+      document.getElementById('modal-progress-fill').style.width = progress.toFixed(0) + '%';
+      Renderer.draw();
 
-    if (State.currentTime >= State.totalDur) {
-      clearInterval(renderLoop);
-      recorder.stop();
-    }
-  }, interval);
-},
+      if (State.currentTime >= State.totalDur) {
+        clearInterval(renderLoop);
+        recorder.stop();
+      }
+    }, interval);
+  },
 
   undo() {
     if (!State.history.length) { UI.toast('Nothing to undo'); return; }
@@ -1186,7 +1259,7 @@ const App = {
   _bindKeys() {
     document.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-      if (e.code === 'Space')                          { e.preventDefault(); Player.toggle(); }
+      if (e.code === 'Space')                            { e.preventDefault(); Player.toggle(); }
       if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); this.deleteSelected(); }
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.code === 'KeyZ') { e.preventDefault(); this.undo(); }
       if ((e.metaKey || e.ctrlKey) &&  e.shiftKey && e.code === 'KeyZ') { e.preventDefault(); this.redo(); }
